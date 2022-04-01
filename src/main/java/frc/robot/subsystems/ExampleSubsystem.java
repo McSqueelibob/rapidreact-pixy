@@ -5,14 +5,20 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class ExampleSubsystem extends SubsystemBase {
   /** Creates a new ExampleSubsystem. */
+
+  double I = 1;
+
   public ExampleSubsystem() {}
 
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
+    
+    SmartDashboard.putNumber("Testing dash", I);
+
   }
 
   @Override

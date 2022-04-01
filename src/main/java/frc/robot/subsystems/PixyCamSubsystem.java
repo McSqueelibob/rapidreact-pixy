@@ -103,7 +103,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   private int getWord()
   {
     int word = 0x00;
-    // int ret = -1;
+    int ret = -1;
     ByteBuffer writeBuf = ByteBuffer.allocateDirect(2);
     writeBuf.order(ByteOrder.BIG_ENDIAN);
     ByteBuffer readBuf = ByteBuffer.allocateDirect(2);
@@ -117,13 +117,13 @@ public class PixyCamSubsystem extends SubsystemBase {
     writeBuf.flip();
 
     // Send the sync / data bit / 0 to get the Pixy to return data appropriately.
-    // ret = pixy.transaction(writeBuf, readBuf, 2);
+    ret = pixy.transaction(writeBuf, readBuf, 2);
       
     // Set the position back to 0 in the buffer so we read it from the beginning next time.
     readBuf.rewind();
       
     // Store the contents of the buffer in a int that will be returned to the caller.
-    word = (int) (readBuf.getShort() & 0xffff);
+    word =  (int) (readBuf.getShort() & 0xffff);
       
     // Clear the buffers, not needed, but nice to know they are cleaned out.
     writeBuf.clear();
@@ -336,13 +336,14 @@ public class PixyCamSubsystem extends SubsystemBase {
   {
     readWords();
 
-    SmartDashboard.putNumber("signarute", words.get(0));
-    SmartDashboard.putNumber("x", words.get(1));
-    SmartDashboard.putNumber("y", words.get(2));
-    SmartDashboard.putNumber("height", words.get(3));
-    SmartDashboard.putNumber("width", words.get(4));
+    SmartDashboard.putNumber("errors", checksumError);
+    SmartDashboard.putNumber("signarute", getSignatureRaw());
+    SmartDashboard.putNumber("x", getXRaw());
+    SmartDashboard.putNumber("y", getYRaw());
+    SmartDashboard.putNumber("height", getHeightRaw());
+    SmartDashboard.putNumber("width", getWidthRaw());
 
-    //staleData = true; // the data is considered stale one loop later
+    staleData = true; // the data is considered stale one loop later
   }
 
 }
