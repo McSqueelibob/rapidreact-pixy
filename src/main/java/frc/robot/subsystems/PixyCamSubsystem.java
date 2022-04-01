@@ -135,7 +135,7 @@ public class PixyCamSubsystem extends SubsystemBase {
    * Used to the words from the SPI bus that the PixyCam writes.
    * This method updates the words, checksumError, and staleData.
    */
-  private void readWords()
+  private void readWordsOneObject()
   {
     int word;
     int wordsToRead = 0;
@@ -216,7 +216,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   final private int getChecksumRaw()
   {
     // if the data is stale, the words should be read
-    if (staleData) readWords();
+    if (staleData) readWordsOneObject();
     // Why does the checksum call readWords instead of periodic?
     // Calling readWords here ensures that we do not call it more than we need to.
     // Only whenever the pixycam is being used will the SPI bus be read.
@@ -334,7 +334,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   @Override
   public void periodic()
   {
-    readWords();
+    readWordsOneObject();
 
     SmartDashboard.putNumber("errors", checksumError);
     SmartDashboard.putNumber("signarute", getSignatureRaw());
