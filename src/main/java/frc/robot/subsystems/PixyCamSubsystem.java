@@ -73,6 +73,8 @@ public class PixyCamSubsystem extends SubsystemBase {
    * @see pixyWordsTypes
    */
   private ArrayList<Integer> words = new ArrayList<Integer>();
+  private ArrayList<Integer> largestBlue = new ArrayList<Integer>();
+  private ArrayList<Integer> largestRed = new ArrayList<Integer>();
 
   /**
    * A counter of the number of errors when reading. Used for debugging.
@@ -206,6 +208,65 @@ public class PixyCamSubsystem extends SubsystemBase {
     }
 
     staleData = false;
+  }
+  
+  private void readWordsMultipleObject()
+  {
+    int numberOfObjects = 5;
+    int word;
+    int wordsToRead = 0;
+    int checksum = 0;
+    Boolean syncFound = false;
+
+    // Every iteration of this periodic function will start with a clean ArrayList of words and largest objects.
+    // Then we can gather information on the largest objects.
+    // *** WORDS IS USED DIFFERENTLY IN THIS FUNCTION
+    words.clear();
+    largestBlue.clear();
+    largestRed.clear();
+
+    for (int i = 0; i < 100; i++){
+      word = getWord();
+      if (wordsToRead > 0){
+        if (checksum == 0){
+          checksum = word;
+        }
+        else {
+          checksum -= word;
+        }
+        words.add(word);
+        if (--wordsToRead <= 0) {
+          if (checksum != 0) {
+            words.clear();
+            checksumError+=1;
+            break; // If there is an error in reading any of the objects, we leave the loop
+          }
+
+          // Tracks how many objects we have left to read by counting down
+          numberOfObjects-=1;
+          
+          
+        }
+      }
+      else if (word == 0xaa55){
+        if (syncFound) {
+          wordsToRead = 6;
+        }
+        else {
+          syncFound = true;
+        }
+      }
+      else {
+        syncFound = false;
+      }
+
+    }
+    if (words.size() == 0) {
+      words.add(0);
+    }
+
+    staleData = false;
+
   }
 
   /**
