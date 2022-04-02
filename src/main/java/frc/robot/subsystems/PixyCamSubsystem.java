@@ -221,7 +221,7 @@ public class PixyCamSubsystem extends SubsystemBase {
     int wordsToRead = 0;
     int checksum = 0;
     Boolean syncFound = false;
-    int framesToRead = 0;
+    int framesToRead = 5;
 
     // Every iteration of this periodic function will start with a clean ArrayList of words.
     // Then in the loop we search for the largest blue and red ball.
@@ -252,7 +252,7 @@ public class PixyCamSubsystem extends SubsystemBase {
         // Add the word to the array list of words
         words.add(word);
 
-        // If we are done reading words of the block, we check the checksum; 
+        // If we are done reading words of the frame, we check the checksum; 
         // if the checksum is bad, dump the array list and count up the checksum error.
         // Either way, we break out of the loop.
         if (--wordsToRead <= 0) {
@@ -269,18 +269,24 @@ public class PixyCamSubsystem extends SubsystemBase {
           // The frames on the SPI go in order of size
           // If the array for the largest object is empty then it hasn't 
           if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_BLUE) {
-            if (largestBlue.isEmpty()==true) {
+            if (largestBlue.isEmpty()) {
               largestBlue=words;
             }
           }
           if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_RED) {
-            if (largestRed.isEmpty()==true) {
+            if (largestRed.isEmpty()) {
               largestRed=words;
             }
           }
 
+          // Preps to read next frame;
+          // dumps current frame, resets words to read, and resets sync found.
+          words.clear();
+          wordsToRead = 0;
+          syncFound = false;
+
           // Once all the frames have been read, we leave the loop
-          if (framesToRead==0) {
+          if (framesToRead <= 0) {
             break;
           }
 
@@ -306,11 +312,6 @@ public class PixyCamSubsystem extends SubsystemBase {
         syncFound = false;
       }
 
-    }
-
-    // If we did not find a valid block, push a null byte to identify the null block.
-    if (words.size() == 0) {
-      words.add(0);
     }
 
     staleData = false;
