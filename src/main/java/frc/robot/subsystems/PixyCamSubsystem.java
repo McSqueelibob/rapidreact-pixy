@@ -221,7 +221,7 @@ public class PixyCamSubsystem extends SubsystemBase {
     int wordsToRead = 0;
     int checksum = 0;
     Boolean syncFound = false;
-    int framesToRead = 0;
+    int framesToRead = 5;
 
     // Every iteration of this periodic function will start with a clean ArrayList of words.
     // Then in the loop we search for the largest blue and red ball.
@@ -269,12 +269,12 @@ public class PixyCamSubsystem extends SubsystemBase {
           // The frames on the SPI go in order of size
           // If the array for the largest object is empty then it hasn't 
           if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_BLUE) {
-            if (largestBlue.isEmpty()==true) {
+            if (largestBlue.isEmpty()) {
               largestBlue=words;
             }
           }
           if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_RED) {
-            if (largestRed.isEmpty()==true) {
+            if (largestRed.isEmpty()) {
               largestRed=words;
             }
           }
@@ -442,27 +442,27 @@ public class PixyCamSubsystem extends SubsystemBase {
   @Override
   public void periodic()
   {
-    readWordsOneObject();
+    // readWordsOneObject();
     readWordsMultipleObjects();
 
-    SmartDashboard.putNumber("errors", checksumError);
-    SmartDashboard.putNumber("signarute", getSignatureRaw());
-    SmartDashboard.putNumber("x", getXRaw());
-    SmartDashboard.putNumber("y", getYRaw());
-    SmartDashboard.putNumber("height", getHeightRaw());
-    SmartDashboard.putNumber("width", getWidthRaw());
+    // SmartDashboard.putNumber("errors", checksumError);
+    // SmartDashboard.putNumber("signarute", getSignatureRaw());
+    // SmartDashboard.putNumber("x", getXRaw());
+    // SmartDashboard.putNumber("y", getYRaw());
+    // SmartDashboard.putNumber("height", getHeightRaw());
+    // SmartDashboard.putNumber("width", getWidthRaw());
 
-    if(largestBlue.isEmpty()==false) {
-      SmartDashboard.putNumber("signarute blue", largestBlue.get(pixyWordsTypes.signature.getIndex()));
-      SmartDashboard.putNumber("x blue", largestBlue.get(pixyWordsTypes.x.getIndex()));
-      SmartDashboard.putNumber("y blue", largestBlue.get(pixyWordsTypes.y.getIndex()));
-    }
+    // if(largestBlue.isEmpty()==false) {
+    //   SmartDashboard.putNumber("signarute blue", largestBlue.get(1));
+    //   SmartDashboard.putNumber("x blue", largestBlue.get(2));
+    //   SmartDashboard.putNumber("y blue", largestBlue.get(3));
+    // }
 
-    if(largestRed.isEmpty()==false) {
-      SmartDashboard.putNumber("signarute red", largestRed.get(pixyWordsTypes.signature.getIndex()));
-      SmartDashboard.putNumber("x red", largestRed.get(pixyWordsTypes.x.getIndex()));
-      SmartDashboard.putNumber("y red", largestRed.get(pixyWordsTypes.y.getIndex()));
-    }
+    // if(largestRed.isEmpty()==false) {
+    //   SmartDashboard.putNumber("signarute red", largestRed.get(pixyWordsTypes.signature.getIndex()));
+    //   SmartDashboard.putNumber("x red", largestRed.get(pixyWordsTypes.x.getIndex()));
+    //   SmartDashboard.putNumber("y red", largestRed.get(pixyWordsTypes.y.getIndex()));
+    // }
 
     staleData = true; // the data is considered stale one loop later
   }
