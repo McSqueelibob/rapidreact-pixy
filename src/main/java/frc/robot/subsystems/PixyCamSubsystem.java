@@ -5,6 +5,7 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Vars;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -182,6 +183,7 @@ public class PixyCamSubsystem extends SubsystemBase {
         }
       }
       // 0xaa55 is the sync word
+      // To mark between different frames, 2 sync words are sent
       else if (word == 0xaa55){
         if (syncFound) {
           // We have seen two sync words and we know we have 
@@ -210,63 +212,108 @@ public class PixyCamSubsystem extends SubsystemBase {
     staleData = false;
   }
   
-  private void readWordsMultipleObject()
+  /**
+   * Modification of readWordsOneObject() to gather information on many objects.
+   */
+  private void readWordsMultipleObjects()
   {
-    int numberOfObjects = 5;
     int word;
     int wordsToRead = 0;
     int checksum = 0;
     Boolean syncFound = false;
+    int framesToRead = 0;
 
-    // Every iteration of this periodic function will start with a clean ArrayList of words and largest objects.
-    // Then we can gather information on the largest objects.
-    // *** WORDS IS USED DIFFERENTLY IN THIS FUNCTION
+    // Every iteration of this periodic function will start with a clean ArrayList of words.
+    // Then in the loop we search for the largest blue and red ball.
     words.clear();
     largestBlue.clear();
     largestRed.clear();
 
+    // Read no more than 100 words per periodic function.  100 is just
+    // a guess, and the actual amount we can read without interfering 
+    // with other periodic robot functions needs to be determined.
     for (int i = 0; i < 100; i++){
+
       word = getWord();
+
+      // If we have found the start of a frame, read the remaining words of the block.
+      // After the last word, break out of the loop to allow other robot functions to run.
       if (wordsToRead > 0){
         if (checksum == 0){
+          // The first word after the sync byte is the checksum
           checksum = word;
         }
         else {
+          // We subtract from the checksum what the current word is;
+          // after all words are read, this checksum will be 0.
           checksum -= word;
         }
+
+        // Add the word to the array list of words
         words.add(word);
+
+        // If we are done reading words of the block, we check the checksum; 
+        // if the checksum is bad, dump the array list and count up the checksum error.
+        // Either way, we break out of the loop.
         if (--wordsToRead <= 0) {
           if (checksum != 0) {
             words.clear();
             checksumError+=1;
-            break; // If there is an error in reading any of the objects, we leave the loop
+            break;
           }
 
-          // Tracks how many objects we have left to read by counting down
-          numberOfObjects-=1;
-          
-          
+          // After gathering a valid frame, we will check if the frame is the largest red or blue ball;
+          // If the frame is either the largest red or blue ball, the frame data will be transfered an array.
+          framesToRead-=1;
+
+          // The frames on the SPI go in order of size
+          // If the array for the largest object is empty then it hasn't 
+          if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_BLUE) {
+            if (largestBlue.isEmpty()==true) {
+              largestBlue=words;
+            }
+          }
+          if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_RED) {
+            if (largestRed.isEmpty()==true) {
+              largestRed=words;
+            }
+          }
+
+          // Once all the frames have been read, we leave the loop
+          if (framesToRead==0) {
+            break;
+          }
+
         }
       }
+      // 0xaa55 is the sync word
+      // To mark between different frames, 2 sync words are sent
       else if (word == 0xaa55){
         if (syncFound) {
+          // We have seen two sync words and we know we have 
+          // found the start of a frame of many blocks.  We prepare
+          // to read the remaining words on the next pass of the loop.
           wordsToRead = 6;
         }
         else {
+          // We found the start of a block, but we need to wait for the
+          // start of the frame to make sure we get the largest object.
           syncFound = true;
         }
       }
       else {
+        // Clear out the sync flag since we did not read a sync word.
         syncFound = false;
       }
 
     }
+
+    // If we did not find a valid block, push a null byte to identify the null block.
     if (words.size() == 0) {
       words.add(0);
     }
 
     staleData = false;
-
   }
 
   /**
@@ -396,6 +443,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   public void periodic()
   {
     readWordsOneObject();
+    readWordsMultipleObjects();
 
     SmartDashboard.putNumber("errors", checksumError);
     SmartDashboard.putNumber("signarute", getSignatureRaw());
@@ -403,6 +451,18 @@ public class PixyCamSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("y", getYRaw());
     SmartDashboard.putNumber("height", getHeightRaw());
     SmartDashboard.putNumber("width", getWidthRaw());
+
+    if(largestBlue.isEmpty()==false) {
+      SmartDashboard.putNumber("signarute blue", largestBlue.get(pixyWordsTypes.signature.getIndex()));
+      SmartDashboard.putNumber("x blue", largestBlue.get(pixyWordsTypes.x.getIndex()));
+      SmartDashboard.putNumber("y blue", largestBlue.get(pixyWordsTypes.y.getIndex()));
+    }
+
+    if(largestRed.isEmpty()==false) {
+      SmartDashboard.putNumber("signarute red", largestRed.get(pixyWordsTypes.signature.getIndex()));
+      SmartDashboard.putNumber("x red", largestRed.get(pixyWordsTypes.x.getIndex()));
+      SmartDashboard.putNumber("y red", largestRed.get(pixyWordsTypes.y.getIndex()));
+    }
 
     staleData = true; // the data is considered stale one loop later
   }
