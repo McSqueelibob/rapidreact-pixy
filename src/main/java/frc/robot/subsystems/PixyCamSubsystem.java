@@ -73,7 +73,7 @@ public class PixyCamSubsystem extends SubsystemBase {
    * ArrayList for storing the bytes the Rio reads off of SPI
    * @see pixyWordsTypes
    */
-  private ArrayList<Integer> words = new ArrayList<Integer>();
+  private ArrayList<Integer> blockwords = new ArrayList<Integer>();
   private ArrayList<Integer> largestBlue = new ArrayList<Integer>();
   private ArrayList<Integer> largestRed = new ArrayList<Integer>();
 
@@ -147,12 +147,12 @@ public class PixyCamSubsystem extends SubsystemBase {
 
     // Every iteration of this periodic function will start with a clean ArrayList of words.
     // Then we know the largest object will be at the beginning of this ArrayList.
-    words.clear();
+    blockwords.clear();
 
     // Read no more than 100 words per periodic function.  100 is just
     // a guess, and the actual amount we can read without interfering 
     // with other periodic robot functions needs to be determined.
-    for (int i = 0; i < 100; i++){
+    for (int i = 0; i < 40; i++){
 
       word = getWord();
 
@@ -170,14 +170,14 @@ public class PixyCamSubsystem extends SubsystemBase {
         }
 
         // Add the word to the array list of words
-        words.add(word);
+        blockwords.add(word);
 
         // If we are done reading words of the block, we check the checksum; 
         // if the checksum is bad, dump the array list and count up the checksum error.
         // Either way, we break out of the loop.
         if (--wordsToRead <= 0) {
           if (checksum != 0)
-            words.clear();
+            blockwords.clear();
             checksumError+=1;
           break;
         }
@@ -205,8 +205,8 @@ public class PixyCamSubsystem extends SubsystemBase {
     }
 
     // If we did not find a valid block, push a null byte to identify the null block.
-    if (words.size() == 0) {
-      words.add(0);
+    if (blockwords.size() == 0) {
+      blockwords.add(0);
     }
 
     staleData = false;
@@ -221,11 +221,11 @@ public class PixyCamSubsystem extends SubsystemBase {
     int wordsToRead = 0;
     int checksum = 0;
     Boolean syncFound = false;
-    int framesToRead = 5;
+    int blocksToRead = 5;
 
     // Every iteration of this periodic function will start with a clean ArrayList of words.
     // Then in the loop we search for the largest blue and red ball.
-    words.clear();
+    blockwords.clear();
     largestBlue.clear();
     largestRed.clear();
 
@@ -236,8 +236,8 @@ public class PixyCamSubsystem extends SubsystemBase {
 
       word = getWord();
 
-      // If we have found the start of a frame, read the remaining words of the block.
-      // After the last word, break out of the loop to allow other robot functions to run.
+      // If we have found the start of a frame, read n blocks/object in the frame.
+      // After the last block, break out of the loop to allow other robot functions to run.
       if (wordsToRead > 0){
         if (checksum == 0){
           // The first word after the sync byte is the checksum
@@ -250,46 +250,44 @@ public class PixyCamSubsystem extends SubsystemBase {
         }
 
         // Add the word to the array list of words
-        words.add(word);
+        blockwords.add(word);
 
-        // If we are done reading words of the frame, we check the checksum; 
+        // If we are done reading words of the block, we check the checksum; 
         // if the checksum is bad, dump the array list and count up the checksum error.
         // Either way, we break out of the loop.
         if (--wordsToRead <= 0) {
           if (checksum != 0) {
-            words.clear();
+            blockwords.clear();
             checksumError+=1;
             break;
           }
 
-          // After gathering a valid frame, we will check if the frame is the largest red or blue ball;
-          // If the frame is either the largest red or blue ball, the frame data will be transfered an array.
-          framesToRead-=1;
+          // After gathering a valid block, we will check if the object is the largest red or blue ball;
+          // If the object is either the largest red or blue ball, the object data will be transfered an array.
+          blocksToRead-=1;
 
-          // The frames on the SPI go in order of size
+          // The block/object on the SPI go in order of size
           // If the array for the largest object is empty then it hasn't 
-          if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_BLUE) {
+          if (blockwords.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_BLUE) {
             if (largestBlue.isEmpty()) {
-              largestBlue=words;
+              largestBlue=new ArrayList<>(blockwords);
             }
           }
-          if (words.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_RED) {
+          else if (blockwords.get(pixyWordsTypes.signature.getIndex())==Vars.PIXY_SIGNATURE_RED) {
             if (largestRed.isEmpty()) {
-              largestRed=words;
+              largestRed=new ArrayList<>(blockwords);
             }
           }
 
-          // Preps to read next frame;
-          // dumps current frame, resets words to read, and resets sync found.
-          words.clear();
-          wordsToRead = 0;
-          syncFound = false;
-
-          // Once all the frames have been read, we leave the loop
-          if (framesToRead <= 0) {
+          if (blocksToRead <= 0) {
+            // Once all the blocks have been read, we leave the loop
             break;
+          } else {
+            // Preps to read next block;
+            // dumps current block and resets words to read.
+            blockwords.clear();
+            wordsToRead = 0;
           }
-
         }
       }
       // 0xaa55 is the sync word
@@ -330,7 +328,7 @@ public class PixyCamSubsystem extends SubsystemBase {
     // Calling readWords here ensures that we do not call it more than we need to.
     // Only whenever the pixycam is being used will the SPI bus be read.
 
-    return words.get(pixyWordsTypes.checksum.getIndex());
+    return blockwords.get(pixyWordsTypes.checksum.getIndex());
   }
   
   /**
@@ -341,7 +339,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   final private int getSignatureRaw()
   {
     if (getChecksumRaw()==0) return -1;
-    return words.get(pixyWordsTypes.signature.getIndex());
+    return blockwords.get(pixyWordsTypes.signature.getIndex());
  }
 
   /**
@@ -351,7 +349,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   final private int getXRaw()
   {
     if (getChecksumRaw()==0) return -1;
-    return words.get(pixyWordsTypes.x.getIndex());
+    return blockwords.get(pixyWordsTypes.x.getIndex());
   }
   
   /**
@@ -361,7 +359,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   final private int getYRaw()
   {
     if (getChecksumRaw()==0) return -1;
-    return words.get(pixyWordsTypes.y.getIndex());
+    return blockwords.get(pixyWordsTypes.y.getIndex());
   }
   
   /**
@@ -372,7 +370,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   {
     if (getChecksumRaw()==0) return -1;
     // TODO map to angles
-    return words.get(pixyWordsTypes.width.getIndex());
+    return blockwords.get(pixyWordsTypes.width.getIndex());
   }
 
   /**
@@ -383,7 +381,7 @@ public class PixyCamSubsystem extends SubsystemBase {
   {
     // TODO map to angles
     if (getChecksumRaw()==0) return -1;
-    return words.get(pixyWordsTypes.height.getIndex());
+    return blockwords.get(pixyWordsTypes.height.getIndex());
   }
   
   /**
@@ -443,26 +441,34 @@ public class PixyCamSubsystem extends SubsystemBase {
   @Override
   public void periodic()
   {
-    readWordsOneObject();
+    // readWordsOneObject();
     readWordsMultipleObjects();
 
-    SmartDashboard.putNumber("errors", checksumError);
-    SmartDashboard.putNumber("signarute", getSignatureRaw());
-    SmartDashboard.putNumber("x", getXRaw());
-    SmartDashboard.putNumber("y", getYRaw());
-    SmartDashboard.putNumber("height", getHeightRaw());
-    SmartDashboard.putNumber("width", getWidthRaw());
+    // SmartDashboard.putNumber("errors", checksumError);
+    // SmartDashboard.putNumber("signarute", getSignatureRaw());
+    // SmartDashboard.putNumber("x", getXRaw());
+    // SmartDashboard.putNumber("y", getYRaw());
+    // SmartDashboard.putNumber("height", getHeightRaw());
+    // SmartDashboard.putNumber("width", getWidthRaw());
 
     if(largestBlue.isEmpty()==false) {
       SmartDashboard.putNumber("signarute blue", largestBlue.get(pixyWordsTypes.signature.getIndex()));
       SmartDashboard.putNumber("x blue", largestBlue.get(pixyWordsTypes.x.getIndex()));
       SmartDashboard.putNumber("y blue", largestBlue.get(pixyWordsTypes.y.getIndex()));
+    } else {
+      SmartDashboard.putNumber("signarute blue", -1);
+      SmartDashboard.putNumber("x blue", 0);
+      SmartDashboard.putNumber("y blue", 0);
     }
 
     if(largestRed.isEmpty()==false) {
       SmartDashboard.putNumber("signarute red", largestRed.get(pixyWordsTypes.signature.getIndex()));
       SmartDashboard.putNumber("x red", largestRed.get(pixyWordsTypes.x.getIndex()));
       SmartDashboard.putNumber("y red", largestRed.get(pixyWordsTypes.y.getIndex()));
+    } else {
+      SmartDashboard.putNumber("signarute red", -1);
+      SmartDashboard.putNumber("x red", 0);
+      SmartDashboard.putNumber("y red", 0);
     }
 
     staleData = true; // the data is considered stale one loop later
